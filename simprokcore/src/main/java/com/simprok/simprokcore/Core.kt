@@ -13,23 +13,25 @@ import com.simprok.simprokmachine.machines.Machine
 /**
  * A RootMachine interface that describes all the layers of the application.
  */
-interface Core<State> : RootMachine<StateAction<State>, StateAction<State>> {
+interface Core<Event, State> : RootMachine<StateAction<Event, State>, StateAction<Event, State>> {
 
     /**
      * Application's layers that receive the latest state and handle it via their
      * mappers as well as emit events that are handled by their reducers.
      */
-    val layers: Set<Layer<State>>
+    val layers: Set<Layer<Event, State>>
 
-    override val child: Machine<StateAction<State>, StateAction<State>>
+    fun reduce(state: State?, event: Event): ReducerResult<State>
+
+    override val child: Machine<StateAction<Event, State>, StateAction<Event, State>>
         get() {
-            val reducer: Machine<StateAction<State>, StateAction<State>> =
-                CoreReducerMachine<Mapper<State?, ReducerResult<State>>, State> { state, event ->
-                    event(state)
-                }.inward<State, StateAction<State>, Mapper<State?, ReducerResult<State>>> {
+            val reducer: Machine<StateAction<Event, State>, StateAction<Event, State>> =
+                CoreReducerMachine<Event, State> { state, event ->
+                    reduce(state, event)
+                }.inward<State, StateAction<Event, State>, Event> {
                     when (it) {
-                        is StateAction.WillUpdate<State> -> Ward.set(it.mapper)
-                        is StateAction.DidUpdate<State> -> Ward.set()
+                        is StateAction.WillUpdate<Event, State> -> Ward.set(it.event)
+                        is StateAction.DidUpdate<Event, State> -> Ward.set()
                     }
                 }.outward {
                     Ward.set(StateAction.DidUpdate(it))
