@@ -21,7 +21,7 @@ internal class CoreClassicMachine<State, Input, Output>(
 
     private var state: CoreClassicResult<State, Output> = initial
 
-    override suspend fun process(input: Input?, callback: Handler<Output>) {
+    override fun process(input: Input?, callback: Handler<Output>) {
         if (input != null) {
             state = reducer(state.state, input)
         }

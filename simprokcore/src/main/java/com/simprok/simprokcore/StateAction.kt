@@ -10,9 +10,9 @@ package com.simprok.simprokcore
 /**
  * This class is public for implementation reasons only. It should not be used directly.
  */
-sealed interface StateAction<Event, State> {
+sealed interface StateAction<State, Event> {
 
-    data class WillUpdate<Event, State>(val event: Event) : StateAction<Event, State>
+    data class WillUpdate<State, Event>(val event: Event) : StateAction<State, Event>
 
-    data class DidUpdate<Event, State>(val state: State) : StateAction<Event, State>
+    data class DidUpdate<State, Event>(val state: State) : StateAction<State, Event>
 }
