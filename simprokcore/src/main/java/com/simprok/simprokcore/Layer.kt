@@ -16,80 +16,79 @@ import com.simprok.simprokmachine.machines.Machine
 /**
  * A general interface that describes a type that represents a layer object.
  */
-sealed interface Layer<GlobalState, GlobalEvent> {
+sealed interface Layer<Event> {
 
-    val child: Machine<StateAction<GlobalState, GlobalEvent>, StateAction<GlobalState, GlobalEvent>>
+    val child: Machine<StateAction<Event>, StateAction<Event>>
 }
 
-interface MachineLayerType<GlobalState, GlobalEvent, State, Event> :
-    Layer<GlobalState, GlobalEvent> {
 
-    override val child: Machine<StateAction<GlobalState, GlobalEvent>, StateAction<GlobalState, GlobalEvent>>
-        get() = machine.outward<State, Event, StateAction<GlobalState, GlobalEvent>> {
+interface MachineLayerType<Event, Input, Output> : Layer<Event> {
+
+    override val child: Machine<StateAction<Event>, StateAction<Event>>
+        get() = machine.outward<Input, Output, StateAction<Event>> {
             Ward.set(
-                StateAction.WillUpdate(mapEvent(it))
+                StateAction.WillUpdate(mapOutput(it))
             )
         }.inward {
             when (it) {
-                is StateAction.WillUpdate<GlobalState, GlobalEvent> -> Ward.set()
-                is StateAction.DidUpdate<GlobalState, GlobalEvent> -> Ward.set(
-                    mapState(it.state)
+                is StateAction.WillUpdate<Event> -> Ward.set()
+                is StateAction.DidUpdate<Event> -> Ward.set(
+                    mapEvent(it.event)
                 )
             }
         }
 
-    val machine: Machine<State, Event>
+    val machine: Machine<Input, Output>
 
-    fun mapState(state: GlobalState): State
+    fun mapEvent(event: Event): Input
 
-    fun mapEvent(event: Event): GlobalEvent
+    fun mapOutput(output: Output): Event
 }
 
-data class MachineLayerObject<GlobalState, GlobalEvent, State, Event>(
-    override val machine: Machine<State, Event>,
-    private val stateMapper: Mapper<GlobalState, State>,
-    private val eventMapper: Mapper<Event, GlobalEvent>
-) : MachineLayerType<GlobalState, GlobalEvent, State, Event> {
+data class MachineLayerObject<Event, Input, Output>(
+    override val machine: Machine<Input, Output>,
+    private val stateMapper: Mapper<Event, Input>,
+    private val eventMapper: Mapper<Output, Event>,
+) : MachineLayerType<Event, Input, Output> {
 
-    override fun mapState(state: GlobalState): State = stateMapper(state)
+    override fun mapEvent(event: Event): Input = stateMapper(event)
 
-    override fun mapEvent(event: Event): GlobalEvent = eventMapper(event)
+    override fun mapOutput(output: Output): Event = eventMapper(output)
 }
 
-interface ConsumerLayerType<GlobalState, GlobalEvent, State, Event> :
-    Layer<GlobalState, GlobalEvent> {
+interface ConsumerLayerType<Event, Input, Output> :
+    Layer<Event> {
 
-    override val child: Machine<StateAction<GlobalState, GlobalEvent>, StateAction<GlobalState, GlobalEvent>>
-        get() = machine.outward<State, Event, StateAction<GlobalState, GlobalEvent>> {
+    override val child: Machine<StateAction<Event>, StateAction<Event>>
+        get() = machine.outward<Input, Output, StateAction<Event>> {
             Ward.set()
         }.inward {
             when (it) {
-                is StateAction.WillUpdate<GlobalState, GlobalEvent> -> Ward.set()
-                is StateAction.DidUpdate<GlobalState, GlobalEvent> -> Ward.set(
-                    map(it.state)
+                is StateAction.WillUpdate<Event> -> Ward.set()
+                is StateAction.DidUpdate<Event> -> Ward.set(
+                    map(it.event)
                 )
             }
         }
 
-    val machine: Machine<State, Event>
+    val machine: Machine<Input, Output>
 
-    fun map(state: GlobalState): State
+    fun map(event: Event): Input
 }
 
-data class ConsumerLayerObject<GlobalState, GlobalEvent, State, Event>(
-    override val machine: Machine<State, Event>,
-    private val mapper: Mapper<GlobalState, State>
-) : ConsumerLayerType<GlobalState, GlobalEvent, State, Event> {
+data class ConsumerLayerObject<Event, Input, Output>(
+    override val machine: Machine<Input, Output>,
+    private val mapper: Mapper<Event, Input>,
+) : ConsumerLayerType<Event, Input, Output> {
 
-    override fun map(state: GlobalState): State = mapper(state)
+    override fun map(event: Event): Input = mapper(event)
 }
 
 
-interface ProducerLayerType<GlobalState, GlobalEvent, State, Event> :
-    Layer<GlobalState, GlobalEvent> {
+interface ProducerLayerType<Event, Input, Output> : Layer<Event> {
 
-    override val child: Machine<StateAction<GlobalState, GlobalEvent>, StateAction<GlobalState, GlobalEvent>>
-        get() = machine.outward<State, Event, StateAction<GlobalState, GlobalEvent>> {
+    override val child: Machine<StateAction<Event>, StateAction<Event>>
+        get() = machine.outward<Input, Output, StateAction<Event>> {
             Ward.set(
                 StateAction.WillUpdate(map(it))
             )
@@ -97,94 +96,94 @@ interface ProducerLayerType<GlobalState, GlobalEvent, State, Event> :
             Ward.set()
         }
 
-    val machine: Machine<State, Event>
+    val machine: Machine<Input, Output>
 
-    fun map(event: Event): GlobalEvent
+    fun map(output: Output): Event
 }
 
 
-data class ProducerLayerObject<GlobalState, GlobalEvent, State, Event>(
-    override val machine: Machine<State, Event>,
-    private val mapper: Mapper<Event, GlobalEvent>
-) : ProducerLayerType<GlobalState, GlobalEvent, State, Event> {
+data class ProducerLayerObject<Event, Input, Output>(
+    override val machine: Machine<Input, Output>,
+    private val mapper: Mapper<Output, Event>,
+) : ProducerLayerType<Event, Input, Output> {
 
-    override fun map(event: Event): GlobalEvent = mapper(event)
+    override fun map(output: Output): Event = mapper(output)
 }
 
 
-interface MapEventLayerType<GlobalState, GlobalEvent, Event> : Layer<GlobalState, GlobalEvent> {
+interface MapEventLayerType<Event, Output> : Layer<Event> {
 
-    override val child: Machine<StateAction<GlobalState, GlobalEvent>, StateAction<GlobalState, GlobalEvent>>
-        get() = machine.outward<GlobalState, Event, StateAction<GlobalState, GlobalEvent>> {
+    override val child: Machine<StateAction<Event>, StateAction<Event>>
+        get() = machine.outward<Event, Output, StateAction<Event>> {
             Ward.set(
                 StateAction.WillUpdate(map(it))
             )
         }.inward {
             when (it) {
-                is StateAction.WillUpdate<GlobalState, GlobalEvent> -> Ward.set()
-                is StateAction.DidUpdate<GlobalState, GlobalEvent> -> Ward.set(it.state)
+                is StateAction.WillUpdate<Event> -> Ward.set()
+                is StateAction.DidUpdate<Event> -> Ward.set(it.event)
             }
         }
 
-    val machine: Machine<GlobalState, Event>
+    val machine: Machine<Event, Output>
 
-    fun map(event: Event): GlobalEvent
+    fun map(output: Output): Event
 }
 
-data class MapEventLayerObject<GlobalState, GlobalEvent, Event>(
-    override val machine: Machine<GlobalState, Event>,
-    private val mapper: Mapper<Event, GlobalEvent>
-) : MapEventLayerType<GlobalState, GlobalEvent, Event> {
+data class MapEventLayerObject<Event, Output>(
+    override val machine: Machine<Event, Output>,
+    private val mapper: Mapper<Output, Event>,
+) : MapEventLayerType<Event, Output> {
 
-    override fun map(event: Event): GlobalEvent = mapper(event)
+    override fun map(output: Output): Event = mapper(output)
 }
 
-interface MapStateLayerType<GlobalState, GlobalEvent, State> : Layer<GlobalState, GlobalEvent> {
+interface MapStateLayerType<Event, Input> : Layer<Event> {
 
-    override val child: Machine<StateAction<GlobalState, GlobalEvent>, StateAction<GlobalState, GlobalEvent>>
-        get() = machine.outward<State, GlobalEvent, StateAction<GlobalState, GlobalEvent>> {
+    override val child: Machine<StateAction<Event>, StateAction<Event>>
+        get() = machine.outward<Input, Event, StateAction<Event>> {
             Ward.set(
                 StateAction.WillUpdate(it)
             )
         }.inward {
             when (it) {
-                is StateAction.WillUpdate<GlobalState, GlobalEvent> -> Ward.set()
-                is StateAction.DidUpdate<GlobalState, GlobalEvent> -> Ward.set(
-                    map(it.state)
+                is StateAction.WillUpdate<Event> -> Ward.set()
+                is StateAction.DidUpdate<Event> -> Ward.set(
+                    map(it.event)
                 )
             }
         }
 
-    val machine: Machine<State, GlobalEvent>
+    val machine: Machine<Input, Event>
 
-    fun map(state: GlobalState): State
+    fun map(event: Event): Input
 }
 
-data class MapStateLayerObject<GlobalState, GlobalEvent, State>(
-    override val machine: Machine<State, GlobalEvent>,
-    private val mapper: Mapper<GlobalState, State>
-) : MapStateLayerType<GlobalState, GlobalEvent, State> {
+data class MapStateLayerObject<Event, Input>(
+    override val machine: Machine<Input, Event>,
+    private val mapper: Mapper<Event, Input>,
+) : MapStateLayerType<Event, Input> {
 
-    override fun map(state: GlobalState): State = mapper(state)
+    override fun map(event: Event): Input = mapper(event)
 }
 
-interface NoMapLayerType<GlobalState, GlobalEvent> : Layer<GlobalState, GlobalEvent> {
+interface NoMapLayerType<Event> : Layer<Event> {
 
-    override val child: Machine<StateAction<GlobalState, GlobalEvent>, StateAction<GlobalState, GlobalEvent>>
-        get() = machine.outward<GlobalState, GlobalEvent, StateAction<GlobalState, GlobalEvent>> {
+    override val child: Machine<StateAction<Event>, StateAction<Event>>
+        get() = machine.outward<Event, Event, StateAction<Event>> {
             Ward.set(
                 StateAction.WillUpdate(it)
             )
         }.inward {
             when (it) {
-                is StateAction.WillUpdate<GlobalState, GlobalEvent> -> Ward.set()
-                is StateAction.DidUpdate<GlobalState, GlobalEvent> -> Ward.set(it.state)
+                is StateAction.WillUpdate<Event> -> Ward.set()
+                is StateAction.DidUpdate<Event> -> Ward.set(it.event)
             }
         }
 
-    val machine: Machine<GlobalState, GlobalEvent>
+    val machine: Machine<Event, Event>
 }
 
-data class NoMapLayerObject<GlobalState, GlobalEvent>(
-    override val machine: Machine<GlobalState, GlobalEvent>
-) : NoMapLayerType<GlobalState, GlobalEvent>
+data class NoMapLayerObject<Event>(
+    override val machine: Machine<Event, Event>,
+) : NoMapLayerType<Event>

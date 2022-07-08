@@ -13,32 +13,34 @@ import com.simprok.simprokmachine.machines.Machine
 /**
  * A RootMachine interface that describes all the layers of the application.
  */
-interface Core<State, Event> : RootMachine<StateAction<State, Event>, StateAction<State, Event>> {
+interface Core<State, Event> : RootMachine<Event, Event> {
 
     /**
      * Application's layers that receive the latest state and handle it via their
      * mappers as well as emit events that are handled by their reducers.
      */
-    val layers: Set<Layer<State, Event>>
+    val layers: Set<Layer<Event>>
 
     fun reduce(state: State?, event: Event): ReducerResult<State>
 
-    override val child: Machine<StateAction<State, Event>, StateAction<State, Event>>
+    override val child: Machine<Event, Event>
         get() {
-            val reducer: Machine<StateAction<State, Event>, StateAction<State, Event>> =
-                CoreReducerMachine<Event, State> { state, event ->
+            val reducer: Machine<StateAction<Event>, StateAction<Event>> =
+                CoreReducerMachine<State, Event> { state, event ->
                     reduce(state, event)
-                }.inward<State, StateAction<State, Event>, Event> {
-                    when (it) {
-                        is StateAction.WillUpdate<State, Event> -> Ward.set(it.event)
-                        is StateAction.DidUpdate<State, Event> -> Ward.set()
-                    }
                 }.outward {
-                    Ward.set(StateAction.DidUpdate(it))
+                    Ward.set<StateAction<Event>>(StateAction.DidUpdate(it))
+                }.inward {
+                    when (it) {
+                        is StateAction.WillUpdate<Event> -> Ward.set(it.event)
+                        is StateAction.DidUpdate<Event> -> Ward.set()
+                    }
                 }
 
-            return mergeList(layers.map { it.child }.plus(reducer)).redirect {
+            val merged = mergeList(layers.map { it.child }.plus(reducer)).redirect {
                 Direction.Back(it)
             }
+
+            return merged.outward { Ward.set<Event>() }.inward { Ward.set() }
         }
 }
