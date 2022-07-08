@@ -57,7 +57,7 @@ Check out this [wiki](https://github.com/simprok-dev/simprokcore-kotlin/wiki) fo
 Add this in your project's gradle file:
 
 ```groovy
-implementation 'com.github.simprok-dev:simprokcore-kotlin:1.1.9'
+implementation 'com.github.simprok-dev:simprokcore-kotlin:1.1.11'
 ```
 
 and this in your settings.gradle file:
